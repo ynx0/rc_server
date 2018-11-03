@@ -2,9 +2,10 @@ import falcon
 from procbridge.procbridge import *
 
 # MARK - hardware_server procbridge settings
-host = '192.168.0.125' # put correct ip of pi
+host = '192.168.0.125'  # put correct ip of pi
 port = 9009
 client = ProcBridge(host, port)
+
 
 # MARK - falcon server handler code
 
@@ -22,18 +23,18 @@ class MoveHandler(object):
         except TimeoutError:
             resp.status = falcon.HTTP_500
 
-
     # try:
     #     client.request(cmd, param1)
     # except Exception as e:
     #     success = "Failed: " + str(e)
 
 
-
 app = falcon.API()
+
 
 def start():
     app.add_route('/move', MoveHandler)
+
 
 if __name__ == '__main__':
     try:
