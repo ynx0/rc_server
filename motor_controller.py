@@ -15,8 +15,8 @@ turn_freq = 10  # use lower hz for more torque, higher hz for more refined motor
 
 # MARK - Speeds (Duty Cycles)
 min_speed = 20.0  # duty cycle
-max_speed = 45.0  # can actually go higher, like 100% duty cycle, but eh thats dangerous
-turn_duty = 15
+max_speed = 90.0  # can actually go higher, like 100% duty cycle, but eh thats dangerous
+turn_duty = 30
 turn_slp_interval = 0.125
 
 # MARK - speeds used for kickoff to have a better start up
@@ -101,8 +101,8 @@ class MotorController:
 
     def forward(self, speed=min_speed):
 
-        if debug: print('moving forward at speed: ' + str(speed))
         speed = self.__normalize(speed)
+        if debug: print('moving forward at normalized speed: ' + str(speed))
         self.kickoff()
         self.motor1.ChangeDutyCycle(speed)
         self.motor2.ChangeDutyCycle(0)
@@ -110,8 +110,8 @@ class MotorController:
         self.current_direction = Motion.FORWARD
 
     def backward(self, speed=min_speed):
-        if debug: print('moving backwards at speed: ' + str(speed))
         speed = self.__normalize(speed)
+        if debug: print('moving backwards at normalized speed: ' + str(speed))
         self.motor2.ChangeDutyCycle(speed)
         self.motor1.ChangeDutyCycle(0)
         self.current_speed = speed
