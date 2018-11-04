@@ -1,18 +1,17 @@
 import time
 import RPi.GPIO as GPIO
-from Direction import Turn, Motion
-
+from rc_common.Direction import Turn, Motion
+import motor_utils as utils
 
 # MARK - Pins
-motor_pinA1 = 27 # left side of pi
+motor_pinA1 = 27  # left side of pi
 motor_pinA2 = 22
-turn_pinB1 = 23 # left side of pi
+turn_pinB1 = 23  # left side of pi
 turn_pinB2 = 24
-
 
 # MARK - Initial Frequencies
 pwm_freq = 20  # hz, allows for more granular speed control than say, 300hz, also maybe consider using something like 50 hz b/c it is smoother
-turn_freq = 10 # use lower hz for more torque, higher hz for more refined motor and higher speeds
+turn_freq = 10  # use lower hz for more torque, higher hz for more refined motor and higher speeds
 
 # MARK - Speeds (Duty Cycles)
 min_speed = 20.0  # duty cycle
@@ -24,201 +23,181 @@ turn_slp_interval = 0.125
 kickoff_speed = 40
 kickoff_freq = 10
 last_kickoff = 0
-kickoff_threshold = 3 # seconds
-
-# MARK - defaults
-__default_freq = 20
-__default_speed = min_speed
+kickoff_threshold = 3  # seconds
 
 debug = True
 
-# MARK - states
-current_direction = Turn.CENTER
-current_speed = 0 # duty cycle
-current_motor_freq = pwm_freq # initial frequency
 
-def setup():
-    GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(motor_pinA1, GPIO.OUT)
-    GPIO.setup(motor_pinA2, GPIO.OUT)
-    GPIO.setup(turn_pinB1, GPIO.OUT)
-    GPIO.setup(turn_pinB2, GPIO.OUT)
-    # https://electronics.stackexchange.com/a/80154/161902 for now going to
-    global motor1
-    global motor2
-    global turn1
-    global turn2
-    motor1 = GPIO.PWM(motor_pinA1, pwm_freq)
-    motor2 = GPIO.PWM(motor_pinA2, pwm_freq)
-    turn1 = GPIO.PWM(turn_pinB1, turn_freq)
-    turn2 = GPIO.PWM(turn_pinB2, turn_freq)
-    motor1.start(0)
-    motor2.start(0)
-    turn1.start(0)
-    turn2.start(0)
+class MotorController:
 
+    def __init__(self):
+        # motors
+        self.motor1 = None
+        self.motor2 = None
+        self.turn1 = None
+        self.turn2 = None
 
-current_motion_direction = Motion.STOPPED
-# MARK - Helper methods
+        # MARK - states
+        self.current_direction = Turn.CENTER
+        self.current_speed = 0  # duty cycle
+        self.current_motor_freq = pwm_freq  # initial frequency
+        self.current_motion_direction = Motion.STOPPED
 
-def __normalize(speed):
-    if speed > max_speed:
-        speed = max_speed
+        # MARK - misc
+        self.last_kickoff = 0
 
-    if speed < min_speed:
-        speed = min_speed
-    return speed
+        # MARK - defaults
+        self.__default_freq = 20
+        self.__default_speed = min_speed
 
-def cleanup():
-    GPIO.cleanup()
-    print('\nexitting and cleaning up')
+    def setup(self):
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(motor_pinA1, GPIO.OUT)
+        GPIO.setup(motor_pinA2, GPIO.OUT)
+        GPIO.setup(turn_pinB1, GPIO.OUT)
+        GPIO.setup(turn_pinB2, GPIO.OUT)
+        # https://electronics.stackexchange.com/a/80154/161902 for now going to
 
-def __stop(pwm):
-    pwm.ChangeDutyCycle(0)
+        self.motor1 = GPIO.PWM(motor_pinA1, pwm_freq)
+        self.motor2 = GPIO.PWM(motor_pinA2, pwm_freq)
+        self.turn1 = GPIO.PWM(turn_pinB1, turn_freq)
+        self.turn2 = GPIO.PWM(turn_pinB2, turn_freq)
+        self.motor1.start(0)
+        self.motor2.start(0)
+        self.turn1.start(0)
+        self.turn2.start(0)
 
-def __resetTurnPWMS():
-    turn1.ChangeDutyCycle(0)
-    turn2.ChangeDutyCycle(0)
+    # MARK - Helper methods
 
-# MARK - Basic movement control methods
-def stopAll():
-    global current_speed
-    global current_direction
+    @staticmethod
+    def __normalize(speed):
+        if speed > max_speed:
+            speed = max_speed
 
-    __stop(motor1)
-    __stop(motor2)
-    current_speed = 0
-    current_direction = Motion.STOPPED
+        if speed < min_speed:
+            speed = min_speed
+        return speed
 
-def forward(speed=min_speed):
-    global current_speed
-    global current_direction
+    @staticmethod
+    def cleanup():
+        GPIO.cleanup()
+        print('\nexitting and cleaning up')
 
-    if debug: print('moving forward at speed: ' + str(speed))
-    speed = __normalize(speed)
-    kickoff()
-    motor1.ChangeDutyCycle(speed)
-    motor2.ChangeDutyCycle(0)
-    current_speed = speed
-    current_direction = Motion.FORWARD
+    @staticmethod
+    def __stop(pwm: GPIO.PWM):
+        pwm.ChangeDutyCycle(0)
 
-def backward(speed=min_speed):
-    global current_speed
-    global current_direction
+    def __resetTurnPWMS(self):
+        self.turn1.ChangeDutyCycle(0)
+        self.turn2.ChangeDutyCycle(0)
 
-    if debug: print('moving backwards at speed: ' + str(speed))
-    speed = __normalize(speed)
-    motor2.ChangeDutyCycle(speed)
-    motor1.ChangeDutyCycle(0)
-    current_speed = speed
-    current_direction = Motion.BACKWARD
+    # MARK - Basic movement control methods
+    def stopAll(self):
+        self.__stop(self.motor1)
+        self.__stop(self.motor2)
+        self.current_speed = 0
+        self.current_direction = Motion.STOPPED
 
-def kickoff():
-    global kickoff_speed
-    global kickoff_freq
-    global last_kickoff
-    global kickoff_threshold
+    def forward(self, speed=min_speed):
 
-    kickoff_delta = time.time() - last_kickoff
-    last_kickoff = time.time()
-    if kickoff_delta <= 3: # seconds
-        motor1.ChangeDutyCycle(kickoff_speed)
-        motor2.ChangeDutyCycle(0)
-        changeRearFreq(kickoff_freq)
-        time.sleep(0.75)
-        resetRearFreq()
-        last_kickoff = time.time()
+        if debug: print('moving forward at speed: ' + str(speed))
+        speed = self.__normalize(speed)
+        self.kickoff()
+        self.motor1.ChangeDutyCycle(speed)
+        self.motor2.ChangeDutyCycle(0)
+        self.current_speed = speed
+        self.current_direction = Motion.FORWARD
 
-    else:
-        pass
+    def backward(self, speed=min_speed):
+        if debug: print('moving backwards at speed: ' + str(speed))
+        speed = self.__normalize(speed)
+        self.motor2.ChangeDutyCycle(speed)
+        self.motor1.ChangeDutyCycle(0)
+        self.current_speed = speed
+        self.current_direction = Motion.BACKWARD
 
+    def kickoff(self):
+        kickoff_delta = time.time() - self.last_kickoff
+        self.last_kickoff = time.time()
 
+        if kickoff_delta <= 3:  # seconds
+            self.motor1.ChangeDutyCycle(kickoff_speed)
+            self.motor2.ChangeDutyCycle(0)
+            self.changeRearFreq(kickoff_freq)
+            time.sleep(0.75)
+            self.resetRearFreq()
+            self.last_kickoff = time.time()
 
-# MARK - Internal methods for speed generators
+    # MARK - Smooth movement
 
-def __generate_smooth(ceil):
-    return ((i * 10 ** exp) / 10000 for exp in range(2, 5) for i in range(1, ceil))
+    def smoothStop(self):
+        for speed in utils.__generate_smooth_stop(self.current_speed):
+            self.forward(speed)
 
-def __generate_smooth_stop(ceil):
-    return reversed(list(__generate_smooth(ceil)))
+    def smoothForward(self, speed_ceil):
+        for speed in utils.__generate_smooth(speed_ceil):
+            self.forward(speed)
 
-def __generate_smooth_backwards(ceil):
-    # its the same thing, but helps for code clarity
-    return __generate_smooth_stop(ceil)
+    def smoothBackward(self, speed_ceil):
+        for speed in generate_smooth_backwards(speed_ceil):
+            self.backward(speed)
 
+    # MARK - Turning Methods
 
-# MARK - Library methods that call internal methods
+    def turn(self, pwm_turn: GPIO.PWM):
+        self.__resetTurnPWMS()
+        pwm_turn.ChangeDutyCycle(turn_duty)
+        time.sleep(turn_slp_interval)
+        pwm_turn.ChangeDutyCycle(0)
 
-def smoothStop():
-    for speed in __generate_smooth_stop(current_speed):
-        forward(speed)
+    def turnLeft(self):
+        self.__resetTurnPWMS()
+        self.__state_turn_left()
+        self.turn(self.turn1)
 
-def smoothForward(speed_ceil):
-    for speed in __generate_smooth(speed_ceil):
-        forward(speed)
+    def turnRight(self):
+        self.__resetTurnPWMS()
+        self.__state_turn_right()
+        self.turn(self.turn2)
 
-def smoothBackward(speed_ceil):
-    for speed in generate_smooth_backwards(speed_ceil):
-        backward(speed)
+    # noinspection PyTypeChecker
+    def __state_turn_left(self):
+        print('current direction is: ' + self.current_direction.name)
+        if self.current_direction is Turn.ABS_LEFT:
+            if debug: print("Direction is already at ABS_LEFT")
+        else:
+            self.current_direction = Turn(self.current_direction.value - 1)
 
+    # noinspection PyTypeChecker
+    def __state_turn_right(self):
+        print('current direction is: ' + self.current_direction.name)
+        if self.current_direction is Turn.ABS_LEFT:
+            if debug: print("Direction is already at ABS_RIGHT")
+        else:
+            self.current_direction = Turn(self.current_direction.value + 1)
 
-# MARK - Turning Methods
+    def turnToDirection(self, direction: Turn):
 
+        delta_direction = abs(
+            self.current_direction.value - direction.value)  # the math works this way because the way the values are setup
+        direction_range = range(0, delta_direction)
+        if direction is current_direction:
+            if debug: print("direction to turn to is the same as the current direction")
+        elif direction.is_left():
+            for _ in direction_range:
+                self.turnLeft()
+        elif direction.is_right():
+            for _ in direction_range:
+                self.turnRight()
 
-def turn(pwm_turn):
-    __resetTurnPWMS()
-    pwm_turn.ChangeDutyCycle(turn_duty)
-    time.sleep(turn_slp_interval)
-    pwm_turn.ChangeDutyCycle(0)
+    def changeRearFreq(self, freq):
+        self.motor1.ChangeFrequency(freq)
+        self.motor2.ChangeFrequency(freq)
 
-def turnLeft():
-    __resetTurnPWMS()
-    __state_turn_left()
-    turn(turn1)
+    def resetRearFreq(self):
+        self.changeRearFreq(self.__default_freq)
 
-def turnRight():
-    __resetTurnPWMS()
-    __state_turn_right()
-    turn(turn2)
-
-
-def __state_turn_left():
-    global current_direction # why do i need this :(
-    print('current direction is: ' + current_direction.name)
-    if current_direction is Turn.ABS_LEFT:
-        if debug: print("Direction is already at ABS_LEFT")
-    else:
-        current_direction = Turn(current_direction.value - 1)
-
-def __state_turn_right():
-    global current_direction
-    print('current direction is: ' + current_direction.name)
-    if current_direction is Turn.ABS_LEFT:
-        if debug: print("Direction is already at ABS_RIGHT")
-    else:
-        current_direction = Turn(current_direction.value + 1)
-
-def turnToDirection(direction):
-    global current_direction # just to be safe
-
-    delta_direction = abs(current_direction.value - direction.value) # the math works this way because the way the values are setup
-    direction_range = range(0, delta_direction)
-    if direction is current_direction:
-        if debug: print("direction to turn to is the same as the current direction")
-    elif direction.is_left():
-        for steps in direction_range:
-            turnLeft()
-    elif direction.is_right():
-        for steps in direction_range:
-            turnRight()
-
-def changeRearFreq(freq):
-    motor1.ChangeFrequency(freq)
-    motor2.ChangeFrequency(freq)
-
-def resetRearFreq():
-    changeRearFreq(__default_freq)
 
 if __name__ == '__main__':
-    raise Exception("IdiocyException: Library file should not be run")
+    raise Exception("Error: Library file should not be run")
