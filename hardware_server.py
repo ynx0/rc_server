@@ -1,6 +1,6 @@
 import sys
 from procbridge.procbridge import *
-import motor_controller as mc
+from motor_controller import MotorController
 from rc_common.RC_Commands import Commands  # yeah i know, its not pretty
 
 # get outward facing ip (credit: someone on SO)
@@ -9,6 +9,7 @@ host = [l for l in ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[
      [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]) if l][0][0]
 
 port = 9939
+mc = MotorController()
 
 
 def movement_handler(command, args):
