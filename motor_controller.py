@@ -172,7 +172,7 @@ class MotorController:
     # noinspection PyTypeChecker
     def __state_turn_right(self):
         print('current direction is: ' + self.current_direction.name)
-        if self.current_direction is Turn.ABS_LEFT:
+        if self.current_direction is Turn.ABS_RIGHT:
             if debug: print("Direction is already at ABS_RIGHT")
         else:
             self.current_direction = Turn(self.current_direction.value + 1)
