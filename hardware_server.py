@@ -1,6 +1,7 @@
 import sys
 from procbridge.procbridge import *
 from motor_controller import MotorController
+from rc_common import netcfg
 from rc_common.RC_Commands import Commands  # yeah i know, its not pretty
 
 # get outward facing ip (credit: someone on SO)
@@ -35,7 +36,7 @@ def movement_handler(command, args):
         print("Error: Unknown command: " + command)
 
 
-server = ProcBridgeServer(host, port, movement_handler)
+server = ProcBridgeServer(host, netcfg.HDW_PORT, movement_handler)
 
 
 def start():
