@@ -10,7 +10,10 @@ turn_pinB1 = 23  # left side of pi
 turn_pinB2 = 24
 
 # MARK - Initial Frequencies
-pwm_freq = 20  # hz, allows for more granular speed control than say, 300hz, also maybe consider using something like 50 hz b/c it is smoother
+pwm_freq = 20  # hz
+# allows for more granular speed control than say,
+# 300hz, also maybe consider using something like 50 hz b/c it is smoother
+
 turn_freq = 10  # use lower hz for more torque, higher hz for more refined motor and higher speeds
 
 # MARK - Speeds (Duty Cycles)
@@ -132,15 +135,15 @@ class MotorController:
     # MARK - Smooth movement
 
     def smoothStop(self):
-        for speed in utils.__generate_smooth_stop(self.current_speed):
+        for speed in utils.generate_smooth_stop(self.current_speed):
             self.forward(speed)
 
     def smoothForward(self, speed_ceil):
-        for speed in utils.__generate_smooth(speed_ceil):
+        for speed in utils.generate_smooth(speed_ceil):
             self.forward(speed)
 
     def smoothBackward(self, speed_ceil):
-        for speed in generate_smooth_backwards(speed_ceil):
+        for speed in utils.generate_smooth_backwards(speed_ceil):
             self.backward(speed)
 
     # MARK - Turning Methods
@@ -182,7 +185,7 @@ class MotorController:
         delta_direction = abs(
             self.current_direction.value - direction.value)  # the math works this way because the way the values are setup
         direction_range = range(0, delta_direction)
-        if direction is current_direction:
+        if direction is self.current_direction:
             if debug: print("direction to turn to is the same as the current direction")
         elif direction.is_left():
             for _ in direction_range:
