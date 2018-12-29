@@ -1,6 +1,6 @@
 import sys
 import libs
-from procbridge import *
+from procbridge import Server
 from motor_controller import MotorController
 from rc_common import netcfg
 from rc_common.RC_Commands import Commands  # yeah i know, its not pretty
