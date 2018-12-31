@@ -106,7 +106,8 @@ class MotorController:
 
         speed = self.__normalize(speed)
         if debug: print('moving forward at normalized speed: ' + str(speed))
-        self.kickoff()
+        # kickoff commented out because it was interfering with xbox controls
+        # self.kickoff()
         self.motor1.ChangeDutyCycle(speed)
         self.motor2.ChangeDutyCycle(0)
         self.current_speed = speed
