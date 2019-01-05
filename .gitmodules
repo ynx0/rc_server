@@ -1,3 +1,6 @@
 [submodule "rc_common"]
 	path = rc_common
 	url = https://github.com/ynx0/rc_common
+[submodule "drv8833"]
+	path = drv8833
+	url = https://github.com/ynx0/drv8833.git
