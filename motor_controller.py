@@ -31,6 +31,7 @@ kickoff_threshold = 3  # seconds
 debug = True
 
 
+# noinspection PyPep8Naming
 class MotorController:
 
     def __init__(self):
@@ -50,7 +51,7 @@ class MotorController:
         self.last_kickoff = 0
 
         # MARK - defaults
-        self.__default_freq = 20
+        self.__default_freq = pwm_freq
         self.__default_speed = min_speed
 
     def setup(self):
@@ -103,7 +104,6 @@ class MotorController:
         self.current_direction = Motion.STOPPED
 
     def forward(self, speed=min_speed):
-
         speed = self.__normalize(speed)
         if debug: print('moving forward at normalized speed: ' + str(speed))
         # kickoff commented out because it was interfering with xbox controls
