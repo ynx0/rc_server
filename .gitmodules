@@ -4,3 +4,6 @@
 [submodule "drv8833"]
 	path = drv8833
 	url = https://github.com/ynx0/drv8833.git
+[submodule "imagezmq"]
+	path = imagezmq
+	url = https://github.com/jeffbass/imagezmq/
