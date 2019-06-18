@@ -17,7 +17,7 @@ turn_freq = 10  # use lower hz for more torque, higher hz for more refined motor
 
 # MARK - Speeds (Duty Cycles)
 min_speed = 20.0  # duty cycle
-max_speed = 90.0  # can actually go higher, like 100% duty cycle, but eh thats dangerous
+max_speed = 90.0  # can actually go higher, like 100% duty cycle, but eh that's dangerous
 
 turn_speed = 15
 turn_slp_interval = 0.125
